@@ -7,8 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "node seeders/seed.js",
-    "build": "npx prisma generate"
+    "seed": "node seeders/seed.js"
   },
   "keywords": [],
   "author": "Wildan Fadillah Hornor",
@@ -22,10 +21,10 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.8.1",
-    "prisma": "^6.18.0"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "prisma": "^6.18.0"
   }
 }
