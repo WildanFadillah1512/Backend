@@ -1,0 +1,235 @@
+// Mendefinisikan generator client.
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Mendefinisikan koneksi database Anda.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === ENUM & MODEL APLIKASI ===
+
+// Enum untuk Role (Admin / Penyewa)
+enum Role {
+  PENYEWA
+  ADMIN
+  // Anda mungkin ingin menambah 'SELLER' di sini jika seller punya login sendiri
+}
+
+// Model untuk Pengguna (Customer)
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- RELASI YANG SUDAH ADA ---
+  role          Role           @default(PENYEWA)
+  saved         SavedProduct[]
+  cart          CartItem[]
+  addresses     Address[]
+  reviews       Review[]
+  conversations Conversation[]
+  messages      Message[]
+
+  // --- [PENYESUAIAN] Relasi baru untuk riwayat & notifikasi ---
+  rentals       Rental[]
+  notifications Notification[]
+}
+
+// Model untuk Penjual (Seller/Toko)
+model Seller {
+  id            Int            @id // ID diisi manual, bukan auto-increment.
+  name          String
+  avatar        String?
+  bio           String?
+  rating        Float?
+  itemsRented   Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  products      Product[]
+  conversations Conversation[]
+}
+
+// Model untuk Produk
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String
+  price        Float
+  description  String
+  imageUrl     String?
+  category     String?
+  ratingAvg    Float    @default(0)
+  reviewsCount Int      @default(0)
+  trending     Boolean  @default(false)
+  location     String?  // <-- Penting untuk 'Lokasi Populer'
+  period       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sellerId     Int
+  seller       Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  likedBy      SavedProduct[]
+  inCart       CartItem[]
+  reviews      Review[]
+}
+
+
+// --- MODEL UNTUK FITUR "LIKES" ---
+model SavedProduct {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+
+  @@unique([userId, productId])
+}
+
+// --- MODEL UNTUK FITUR "KERANJANG" ---
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  duration  Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+
+  @@unique([userId, productId])
+}
+
+
+// --- MODEL UNTUK FITUR "ALAMAT" ---
+model Address {
+  id           Int      @id @default(autoincrement())
+  label        String
+  receiverName String
+  phone        String
+  street       String
+  city         String
+  province     String
+  postalCode   String
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int
+}
+
+
+// --- MODEL UNTUK FITUR "ULASAN" ---
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+
+  @@unique([userId, productId])
+}
+
+
+// --- MODEL UNTUK KATEGORI ---
+model Category {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  imageUrl String?
+}
+
+
+// --- MODEL UNTUK CHAT ---
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    Int
+  sellerId  Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seller    Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, sellerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       Int
+  senderRole     Role
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+}
+
+
+// ================================================================
+// === 🚀 MODEL UNTUK "PUSAT INSPIRASI" (EXPLORE SCREEN) ===
+// ================================================================
+model Promotion {
+  id        Int      @id @default(autoincrement())
+  title     String
+  imageUrl  String
+  query     String   // Teks pencarian saat banner diklik
+  createdAt DateTime @default(now())
+}
+
+
+// ================================================================
+// === 🚀 MODEL BARU: RENTAL & NOTIFIKASI (LANGKAH 1) ===
+// ================================================================
+
+enum RentalStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Model untuk "Pesanan Sewa" (induk)
+model Rental {
+  id         Int          @id @default(autoincrement())
+  createdAt  DateTime     @default(now())
+  userId     Int
+  user       User         @relation(fields: [userId], references: [id])
+  totalPrice Float
+  address    String // Salinan alamat dalam format JSON atau string
+  status     RentalStatus @default(PENDING)
+  items      RentalItem[]
+}
+
+// Model untuk barang di dalam pesanan sewa
+model RentalItem {
+  id           Int    @id @default(autoincrement())
+  rentalId     Int
+  rental       Rental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  productId    Int
+  productName  String
+  productPrice Float
+  imageUrl     String?
+  duration     Int
+  sellerId     Int // Untuk tahu siapa penjualnya
+}
+
+// Model untuk Notifikasi
+model Notification {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  linkTo    String? // cth: "rental:1" atau "product:10"
+
+  @@index([userId])
+}
+
