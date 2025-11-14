@@ -593,6 +593,8 @@ app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
 
 
 // --- [PERBAIKAN LOGIKA] RUTE UTAMA UNTUK CHECKOUT ---
+// Logika ini sekarang menerima 'items' dari body, BUKAN dari database cart.
+// Ini membuatnya berfungsi untuk DetailScreen DAN CartScreen.
 app.post('/api/checkout', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   // 'items' adalah array CheckoutRentalItem[] dari frontend
@@ -608,9 +610,6 @@ app.post('/api/checkout', authMiddleware, async (req, res) => {
   }
 
   try {
-    // Kita tidak lagi membaca dari `prisma.cartItem`.
-    // Kita PERCAYA pada array 'items' yang dikirim oleh frontend.
-    
     const newRental = await prisma.$transaction(async (tx) => {
       
       const rental = await tx.rental.create({
@@ -666,7 +665,7 @@ app.post('/api/checkout', authMiddleware, async (req, res) => {
         },
       });
       
-      // 7. Hapus HANYA item yang di-checkout dari keranjang
+      // 7. Hapus HANYA item yang di-checkout dari keranjang (jika ada)
       await tx.cartItem.deleteMany({
         where: { 
           userId: userId,
