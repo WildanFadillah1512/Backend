@@ -28,6 +28,9 @@ const io = new Server(server, {
   }
 });
 // ----------------------------------------
+app.get('/api', (req, res) => {
+    res.status(200).json({ status: 'OK', message: 'API is Awake and Running!' });
+});
 
 // --- Middleware ---
 app.use(cors());
