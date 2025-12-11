@@ -1,55 +1,43 @@
-// ==========================================
-// FILE: index.js (atau server.js)
-// ==========================================
-
-// --- 1. IMPOR LIBRARY ---
+// --- Impor Library ---
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require('cors'); // Library CORS
-const http = require('http'); // HTTP Server
-const { Server } = require("socket.io"); // Socket.IO
+const cors = require('cors');
 
-// --- 2. IMPOR MIDDLEWARE ---
-// Pastikan file authMiddleware.js dan adminMiddleware.js ada di folder yang sama
+// --- 1. IMPOR MODUL BARU UNTUK SOCKET.IO ---
+const http = require('http');
+const { Server } = require("socket.io");
+
+// --- Impor middleware dari file terpisah ---
 const authMiddleware = require('./authMiddleware');
 const adminMiddleware = require('./adminMiddleware');
 
-// --- 3. INISIALISASI ---
+// --- Inisialisasi ---
 const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- 4. SETUP HTTP SERVER & SOCKET.IO ---
+// --- 2. BUAT HTTP SERVER & BUNGKUS 'app' ---
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Izinkan koneksi Socket dari mana saja (Web & Mobile)
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
+// ----------------------------------------
 
-// ========================================================
-// === 5. MIDDLEWARE UTAMA (TERMASUK PERBAIKAN CORS) ===
-// ========================================================
-
-// Konfigurasi CORS Eksplisit (PENTING UNTUK MENGATASI ERROR FRONTEND)
-app.use(cors({
-    origin: '*', // Izinkan semua domain (Localhost, Vercel, HP/React Native)
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Izinkan semua method HTTP
-    allowedHeaders: ['Content-Type', 'Authorization'], // Izinkan header Token
-    credentials: true // Opsional, untuk cookie/session
-}));
-
-app.use(express.json()); // Parser JSON Body
-app.use(express.static(path.join(__dirname, 'public'))); // Folder public static
+// --- Middleware ---
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ===================================
 // === RUTE AUTENTIKASI (USER) ===
 // ===================================
-
+// (Kode Autentikasi Anda sudah benar)
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, name } = req.body;
@@ -73,7 +61,6 @@ app.post('/api/auth/register', async (req, res) => {
         res.status(500).json({ error: 'Terjadi kesalahan pada server' });
     }
 });
-
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -100,7 +87,6 @@ app.post('/api/auth/login', async (req, res) => {
         res.status(500).json({ error: 'Terjadi kesalahan pada server' });
     }
 });
-
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId; 
@@ -118,10 +104,11 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   }
 });
 
+
 // ===================================
 // === RUTE PRODUK & SELLER (PUBLIK) ===
 // ===================================
-
+// (Urutan sudah benar)
 app.get('/api/products/trending', async (_req, res) => {
     try {
         const trendingProducts = await prisma.product.findMany({
@@ -135,7 +122,6 @@ app.get('/api/products/trending', async (_req, res) => {
         res.status(500).json({ error: 'Gagal mengambil produk trending' });
     }
 });
-
 app.get('/api/products/newest', async (_req, res) => {
     try {
         const newestProducts = await prisma.product.findMany({
@@ -149,7 +135,6 @@ app.get('/api/products/newest', async (_req, res) => {
         res.status(500).json({ error: 'Gagal mengambil produk terbaru' });
     }
 });
-
 app.get('/api/products', async (req, res) => {
     try {
         if (req.query.filter === 'popular') {
@@ -168,7 +153,6 @@ app.get('/api/products', async (req, res) => {
         res.status(500).json({ error: 'Gagal mengambil data produk' });
     }
 });
-
 app.get('/api/products/:id', async (req, res) => {
     const { id: idParam } = req.params;
     const productId = parseInt(idParam)
@@ -196,7 +180,6 @@ app.get('/api/products/:id', async (req, res) => {
         res.status(500).json({ error: 'Gagal mengambil data produk' });
     }
 });
-
 app.get('/api/sellers/:id/products', async (req, res) => {
     const { id: idParam } = req.params;
     const sellerId = parseInt(idParam);
@@ -218,7 +201,6 @@ app.get('/api/sellers/:id/products', async (req, res) => {
         res.status(500).json({ error: 'Gagal mengambil produk seller' });
     }
 });
-
 app.get('/api/products/:id/reviews', async (req, res) => {
   const productId = parseInt(req.params.id);
   if (isNaN(productId)) {
@@ -240,7 +222,6 @@ app.get('/api/products/:id/reviews', async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil ulasan" });
   }
 });
-
 app.get('/api/categories', async (_req, res) => {
     try {
         const categories = await prisma.category.findMany({});
@@ -250,7 +231,6 @@ app.get('/api/categories', async (_req, res) => {
         res.status(500).json({ error: 'Gagal mengambil kategori' });
     }
 });
-
 app.get('/api/promotions', async (_req, res) => {
     try {
         const promotions = await prisma.promotion.findMany({
@@ -263,7 +243,6 @@ app.get('/api/promotions', async (_req, res) => {
         res.json({ promotions: [] });
     }
 });
-
 app.get('/api/locations/popular', async (_req, res) => {
     try {
         const popularLocations = await prisma.product.groupBy({
@@ -287,7 +266,6 @@ app.get('/api/locations/popular', async (_req, res) => {
 // ===================================
 // === RUTE FITUR SPESIFIK USER (PRIVAT) ===
 // ===================================
-
 app.get('/api/likes', authMiddleware, async (req, res) => {
   const userId = req.user.userId; 
   try {
@@ -303,7 +281,6 @@ app.get('/api/likes', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data likes" });
   }
 });
-
 app.post('/api/likes', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const { productId } = req.body;
@@ -326,7 +303,6 @@ app.post('/api/likes', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal memproses like/unlike" });
   }
 });
-
 app.get('/api/cart', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -343,7 +319,6 @@ app.get('/api/cart', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data keranjang" });
   }
 });
-
 app.post('/api/cart', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const { productId, duration = 1 } = req.body;
@@ -373,7 +348,6 @@ app.post('/api/cart', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal memproses keranjang" });
   }
 });
-
 app.delete('/api/cart/:productId', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const productId = parseInt(req.params.productId);
@@ -390,7 +364,6 @@ app.delete('/api/cart/:productId', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal menghapus item" });
   }
 });
-
 app.delete('/api/cart', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -401,7 +374,6 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal mengosongkan keranjang" });
   }
 });
-
 app.get('/api/addresses', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -415,7 +387,6 @@ app.get('/api/addresses', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data alamat" });
   }
 });
-
 app.post('/api/addresses', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const { label, street, city, province, postalCode, phone, receiverName } = req.body;
@@ -432,7 +403,6 @@ app.post('/api/addresses', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal menyimpan alamat" });
   }
 });
-
 app.delete('/api/addresses/:id', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const addressId = parseInt(req.params.id);
@@ -453,7 +423,6 @@ app.delete('/api/addresses/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal menghapus alamat" });
   }
 });
-
 app.put('/api/addresses/:id', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const addressId = parseInt(req.params.id);
@@ -481,7 +450,6 @@ app.put('/api/addresses/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Gagal memperbarui alamat" });
   }
 });
-
 app.post('/api/products/:id/reviews', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const productId = parseInt(req.params.id);
@@ -532,10 +500,10 @@ app.post('/api/products/:id/reviews', authMiddleware, async (req, res) => {
 });
 
 // ================================================================
-// === RUTE UNTUK CHECKOUT, RIWAYAT, & NOTIFIKASI ===
+// === 🚀 [PERBAIKAN] RUTE UNTUK CHECKOUT, RIWAYAT, & NOTIFIKASI ===
 // ================================================================
 
-// --- RUTE UNTUK RIWAYAT SEWA ---
+// --- [BARU] RUTE UNTUK RIWAYAT SEWA ---
 app.get('/api/rentals/history', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -553,7 +521,7 @@ app.get('/api/rentals/history', authMiddleware, async (req, res) => {
   }
 });
 
-// --- RUTE UNTUK NOTIFIKASI ---
+// --- [BARU] RUTE UNTUK NOTIFIKASI ---
 app.get('/api/notifications', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -569,7 +537,7 @@ app.get('/api/notifications', authMiddleware, async (req, res) => {
   }
 });
 
-// --- RUTE UNTUK CONTEXT NOTIFIKASI (Hitungan & Tandai Terbaca) ---
+// --- [BARU] RUTE UNTUK CONTEXT NOTIFIKASI (Hitungan & Tandai Terbaca) ---
 app.get('/api/notifications/unread-count', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -623,7 +591,10 @@ app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
   }
 });
 
-// --- RUTE UTAMA UNTUK CHECKOUT ---
+
+// --- [PERBAIKAN LOGIKA] RUTE UTAMA UNTUK CHECKOUT ---
+// Logika ini sekarang menerima 'items' dari body, BUKAN dari database cart.
+// Ini membuatnya berfungsi untuk DetailScreen DAN CartScreen.
 app.post('/api/checkout', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   // 'items' adalah array CheckoutRentalItem[] dari frontend
@@ -760,7 +731,6 @@ app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
 // ===================================
 // === RUTE CHAT (REST API) ===
 // ===================================
-
 app.post('/api/chat/conversations', authMiddleware, async (req, res) => {
     const { sellerId } = req.body;
     const userId = req.user.userId;
@@ -787,13 +757,12 @@ app.post('/api/chat/conversations', authMiddleware, async (req, res) => {
         res.status(500).json({ message: "Gagal memproses percakapan" });
     }
 });
-
 app.get('/api/chat/conversations', authMiddleware, async (req, res) => {
     const { userId, role } = req.user;
     try {
         const whereClause = (role === 'USER')
             ? { userId: userId }
-            : { userId: userId }; // Jika admin logic bisa disesuaikan
+            : { userId: userId };
         const conversations = await prisma.conversation.findMany({
             where: whereClause,
             include: {
@@ -809,7 +778,6 @@ app.get('/api/chat/conversations', authMiddleware, async (req, res) => {
         res.status(500).json({ message: "Gagal mengambil daftar percakapan" });
     }
 });
-
 app.get('/api/chat/conversations/:id/messages', authMiddleware, async (req, res) => {
     const conversationId = req.params.id;
     const userId = req.user.userId;
@@ -835,10 +803,10 @@ app.get('/api/chat/conversations/:id/messages', authMiddleware, async (req, res)
     }
 });
 
-// ===================================
-// === 6. LOGIKA REAL-TIME (SOCKET.IO) ===
-// ===================================
 
+// ===================================
+// === 3. LOGIKA REAL-TIME (SOCKET.IO) ===
+// ===================================
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
@@ -864,9 +832,10 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
   console.log(`🔌 Seorang pengguna terhubung: ${socket.id} (User ID: ${socket.user.id})`);
   
-  // --- Tambahkan user ke room pribadinya untuk notifikasi ---
+  // --- [BARU] Tambahkan user ke room pribadinya untuk notifikasi ---
   socket.join(`user_room_${socket.user.id}`);
-  
+  // -------------------------------------------------------------
+
   // 'join_room' untuk chat
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
@@ -909,7 +878,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- 7. MENJALANKAN SERVER ---
+// --- 4. Menjalankan Server ---
 server.listen(port, () => {
     console.log(`🚀 Server berjalan (Express + Socket.IO) di http://localhost:${port}`);
 });
